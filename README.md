@@ -48,3 +48,7 @@ This is a Syslog server that sends all logs received over to [AWS's CloudWatch L
   ```
 
 3. Send syslog messages to `127.0.0.1:5014`, these will be viewable in your AWS CloudWatch Logs Management console under the group called `test-logger`.
+
+## Troubleshooting
+
+Issues with AWS signatures - as per #1 this could be a clock sync issue. You should add timezone to your container (as a volume) `/etc/timezone:/etc/timezone:ro`
