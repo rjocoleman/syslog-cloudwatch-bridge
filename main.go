@@ -39,10 +39,10 @@ func main() {
 	}
 
 	if port == "" {
-		port = "514"
+		port = "5014"
 	}
 
-	address := fmt.Sprintf("0.0.0.0:%v", port)
+	address := fmt.Sprintf("127.0.0.1:%v", port)
 	log.Println("Starting syslog server on", address)
 	log.Println("Logging to group:", logGroupName)
 	initCloudWatchStream()
