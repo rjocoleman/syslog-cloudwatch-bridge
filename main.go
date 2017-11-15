@@ -15,6 +15,7 @@ import (
 	"github.com/satori/go.uuid"
 
 	"gopkg.in/mcuadros/go-syslog.v2"
+	"gopkg.in/mcuadros/go-syslog.v2/format"
 )
 
 var port = os.Getenv("PORT")
@@ -38,10 +39,10 @@ func main() {
 	}
 
 	if port == "" {
-		port = "514"
+		port = "5014"
 	}
 
-	address := fmt.Sprintf("0.0.0.0:%v", port)
+	address := fmt.Sprintf("127.0.0.1:%v", port)
 	log.Println("Starting syslog server on", address)
 	log.Println("Logging to group:", logGroupName)
 	initCloudWatchStream()
@@ -66,7 +67,7 @@ func main() {
 	server.Wait()
 }
 
-func sendToCloudWatch(logPart syslog.LogParts) {
+func sendToCloudWatch(logPart format.LogParts) {
 	// service is defined at run time to avoid session expiry in long running processes
 	var svc = cloudwatchlogs.New(session.New())
 	// set the AWS SDK to use our bundled certs for the minimal container (certs from CoreOS linux)
