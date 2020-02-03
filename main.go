@@ -19,7 +19,7 @@ import (
 
 var port = os.Getenv("PORT")
 var logGroupName = os.Getenv("LOG_GROUP_NAME")
-var streamName = uuid.NewV4().String()
+var streamName, err = uuid.NewV4()
 var sequenceToken = ""
 
 var (
@@ -87,7 +87,7 @@ func sendToCloudWatch(buffer []syslog.LogParts) {
 
 	params := &cloudwatchlogs.PutLogEventsInput{
 		LogGroupName:  aws.String(logGroupName),
-		LogStreamName: aws.String(streamName),
+		LogStreamName: aws.String(streamName.String()),
 	}
 
 	for _, logPart := range buffer {
@@ -118,7 +118,7 @@ func initCloudWatchStream() {
 
 	_, err := svc.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 		LogGroupName:  aws.String(logGroupName),
-		LogStreamName: aws.String(streamName),
+		LogStreamName: aws.String(streamName.String()),
 	})
 
 	if err != nil {
