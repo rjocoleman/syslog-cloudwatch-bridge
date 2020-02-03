@@ -46,7 +46,7 @@ func main() {
 	log.Println("Logging to group:", logGroupName)
 	initCloudWatchStream()
 
-	channel := make(syslog.LogPartsChannel)
+	channel := make(syslog.LogPartsChannel, 100)
 	handler := syslog.NewChannelHandler(channel)
 
 	server := syslog.NewServer()
@@ -58,29 +58,43 @@ func main() {
 	server.Boot()
 
 	go func(channel syslog.LogPartsChannel) {
-		for logParts := range channel {
-			sendToCloudWatch(logParts)
+		ticker := time.NewTicker(200 * time.Millisecond)
+		defer ticker.Stop() // release when done, if we ever will
+
+		loglist := make([]format.LogParts, 0)
+		for {
+			select {
+				case <- ticker.C:
+					if len(loglist) <= 0 {
+						continue
+					}
+					sendToCloudWatch(loglist)
+					loglist = make([]format.LogParts, 0)
+				case logParts := <- channel:
+					loglist = append(loglist, logParts)
+			}
 		}
 	}(channel)
 
 	server.Wait()
 }
 
-func sendToCloudWatch(logPart syslog.LogParts) {
+func sendToCloudWatch(buffer []syslog.LogParts) {
 	// service is defined at run time to avoid session expiry in long running processes
 	var svc = cloudwatchlogs.New(session.New())
 	// set the AWS SDK to use our bundled certs for the minimal container (certs from CoreOS linux)
 	svc.Config.HTTPClient = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
 
 	params := &cloudwatchlogs.PutLogEventsInput{
-		LogEvents: []*cloudwatchlogs.InputLogEvent{
-			{
-				Message:   aws.String(logPart["content"].(string)),
-				Timestamp: aws.Int64(makeMilliTimestamp(logPart["timestamp"].(time.Time))),
-			},
-		},
 		LogGroupName:  aws.String(logGroupName),
 		LogStreamName: aws.String(streamName),
+	}
+
+	for _, logPart := range buffer {
+		params.LogEvents = append(params.LogEvents, &cloudwatchlogs.InputLogEvent{
+			Message:   aws.String(logPart["content"].(string)),
+			Timestamp: aws.Int64(makeMilliTimestamp(logPart["timestamp"].(time.Time))),
+		})
 	}
 
 	// first request has no SequenceToken - in all subsequent request we set it
