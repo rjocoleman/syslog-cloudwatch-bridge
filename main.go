@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -91,6 +92,8 @@ func sendToCloudWatch(buffer []format.LogParts) {
 		LogStreamName: aws.String(streamName.String()),
 	}
 
+	sort.Slice(buffer, func(i, j int) bool { return buffer[i]["timestamp"].(time.Time).Before(buffer[j]["timestamp"].(time.Time)) })
+
 	for _, logPart := range buffer {
 		params.LogEvents = append(params.LogEvents, &cloudwatchlogs.InputLogEvent{
 			Message:   aws.String(logPart["content"].(string)),
@@ -107,6 +110,7 @@ func sendToCloudWatch(buffer []format.LogParts) {
 	if err != nil {
 		log.Println(err)
 	}
+	log.Printf("Pushed %v entries to CloudWatch", len(buffer))
 
 	sequenceToken = *resp.NextSequenceToken
 }
